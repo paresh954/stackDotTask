@@ -1,45 +1,55 @@
 import axios from "axios";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 const Users = () => {
-  const [users, setUsers] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [city, setCity] = React.useState("");
+  const [allUsers, setAllUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [city, setCity] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const pageNumber = Array.from({ length: totalPages }, (_, i) => i + 1);
+
   const fetchUsers = async () => {
     setLoading(true);
     try {
       const res = await axios.get("https://jsonplaceholder.typicode.com/users");
-      const data = await res.data;
-      setUsers(data);
-      setLoading(false);
-    } catch (error) {
-      console.error(error);
+      setAllUsers(res.data);
+      setFilteredUsers(res.data);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
-  const filterUser = () => {
-    console.log(event.target.value);
-    setSearch(event.target.value);
-  };
-  const filterCitys = () => {
-    setCity(event.target.value);
-  };
 
+  // Filter logic
   useEffect(() => {
-    const filterCity = users.filter((user) => {
-      return user.address.city.toLowerCase().includes(city.toLowerCase());
-    });
-    setUsers(filterCity);
-  }, [city]);
+    let temp = [...allUsers];
 
-  useEffect(() => {
-    const filteredUsers = users.filter((user) => {
-      return user.name.toLowerCase().includes(search.toLowerCase());
-    });
-    setUsers(filteredUsers);
-  }, [search]);
+    if (search) {
+      temp = temp.filter((user) =>
+        user.name.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    if (city) {
+      temp = temp.filter((user) =>
+        user.address.city.toLowerCase().includes(city.toLowerCase())
+      );
+    }
+
+    setFilteredUsers(temp);
+    setCurrentPage(1); // reset to page 1 on filter
+  }, [search, city, allUsers]);
 
   useEffect(() => {
     fetchUsers();
@@ -51,30 +61,66 @@ const Users = () => {
         "Loading..."
       ) : (
         <div>
-          <input type="text" value={search} onChange={filterUser} />
-          <select onChange={filterCitys}>
-            <option>City</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.address.city}>
-                {user.address.city}
-              </option>
-            ))}
-          </select>
-          <table>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>City</th>
-            </tr>
+          <input
+            type="text"
+            placeholder="Search by name"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td>{user.name}</td>
-                <td>{user.email}</td>
-                <td>{user.address.city}</td>
+          <select value={city} onChange={(e) => setCity(e.target.value)}>
+            <option value="">All Cities</option>
+            {[...new Set(allUsers.map((u) => u.address.city))].map(
+              (city, i) => (
+                <option key={i} value={city}>
+                  {city}
+                </option>
+              )
+            )}
+          </select>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>City</th>
               </tr>
-            ))}
+            </thead>
+            <tbody>
+              {currentItems.map((user) => (
+                <tr key={user.id}>
+                  <td
+                    style={{
+                      color:
+                        search.toLowerCase() === user.name.toLowerCase()
+                          ? "yellow"
+                          : "inherit",
+                    }}
+                  >
+                    {user.name}
+                  </td>
+                  <td>{user.email}</td>
+                  <td>{user.address.city}</td>
+                </tr>
+              ))}
+            </tbody>
           </table>
+
+          <div>
+            {pageNumber.map((num) => (
+              <button
+                key={num}
+                onClick={() => setCurrentPage(num)}
+                style={{
+                  margin: "4px",
+                  background: num === currentPage ? "yellow" : "transparent",
+                }}
+              >
+                {num}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
